@@ -1,0 +1,32 @@
+# Ignore Python bytecode files
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignore virtual environment directories
+env/
+venv/
+*.egg-info/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore PyCharm project files
+.idea/
+
+# Ignore VS Code project files
+.vscode/
+
+# Ignore MacOS system files
+.DS_Store
+
+# Ignore logs and temp files
+*.log
+*.tmp
+
+# Ignore node_modules (for JavaScript/TypeScript projects)
+node_modules/
+
+# Ignore all files in the "assets" directory except for training_dataset.csv
+assets/*
+!assets/training_dataset.csv
