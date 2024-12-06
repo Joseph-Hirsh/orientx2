@@ -89,7 +89,7 @@ def inference():
         return
 
     total_rows = parsed_posts_df.shape[0]
-    batch_size = 128
+    batch_size = 256
     classifications = [None] * total_rows
 
     logging.info("Classifying %d posts", total_rows)
