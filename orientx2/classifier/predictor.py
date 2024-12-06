@@ -24,3 +24,4 @@ def predict_sentiment(texts, model, tokenizer, device, max_length=300):
         _, predictions = torch.max(outputs, dim=1)
 
     return predictions.cpu().tolist()  # Ensure predictions are moved to the CPU
+
