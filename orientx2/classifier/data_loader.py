@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
 
-def load_data(filepath, test_size=0.2, shuffle=True):
+def load_data(filepath, test_size=0.15, shuffle=True):
     texts, labels = [], []
 
     with open(filepath, 'r', encoding='utf-8') as file:
@@ -21,7 +21,6 @@ def load_data(filepath, test_size=0.2, shuffle=True):
             except ValueError:
                 print("ValueError")
 
-    # Stratified split ensures each class is represented proportionally in train and test
     train_texts, val_texts, train_labels, val_labels = train_test_split(
         texts, labels, test_size=float(test_size), random_state=42, shuffle=shuffle, stratify=labels
     )

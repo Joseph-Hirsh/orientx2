@@ -6,15 +6,9 @@ from sklearn.metrics import accuracy_score, classification_report
 from .data_loader import TextClassificationDataset
 from .model import BERTClassifier
 
-# num_classes=3, max_length=300, batch_size=6, lr=3e-5, epochs=5 - 84%
-# try doing 6 epochs and seeing if it does even better
-# make testing dataset
-# get the balance correct by sampling 300 tweets, classifying, determining what the ratio is
-# then
-
 
 class ClassificationPipeline:
-    def __init__(self, model_name="bert-base-uncased", num_classes=3, max_length=300, batch_size=6, lr=3e-5, epochs=7):
+    def __init__(self, model_name="bert-base-uncased", num_classes=3, max_length=300, batch_size=4, lr=3e-5, epochs=2):
         self.model_name = model_name
         self.num_classes = num_classes
         self.max_length = max_length
@@ -24,7 +18,7 @@ class ClassificationPipeline:
 
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = BERTClassifier(model_name, num_classes).to(self.device)
+        self.model = BERTClassifier(model_name, num_classes).to(self.device)  # Ensure the model is moved to the GPU
 
         self.train_loader = None
         self.val_loader = None
@@ -50,6 +44,7 @@ class ClassificationPipeline:
             for batch in self.train_loader:
                 optimizer.zero_grad()
 
+                # Move data to GPU
                 input_ids = batch['input_ids'].to(self.device)
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['label'].to(self.device)
@@ -77,6 +72,7 @@ class ClassificationPipeline:
 
         with torch.no_grad():
             for batch in self.val_loader:
+                # Move data to GPU
                 input_ids = batch['input_ids'].to(self.device)
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['label'].to(self.device)
@@ -96,3 +92,4 @@ class ClassificationPipeline:
 
     def load_model(self, path="assets/model.pth"):
         self.model.load_state_dict(torch.load(path))
+        self.model.to(self.device)  # Ensure the loaded model is on the correct device

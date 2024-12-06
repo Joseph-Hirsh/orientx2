@@ -10,7 +10,7 @@ def load_mp_dict(json_file):
         return json.load(file)
 
 
-def parse_tweets(json_file, mp_dict_path, start_date=datetime(2013, 1, 1), end_date=datetime(2024, 3, 29)):
+def parse_tweets(json_file, mp_dict_path, start_date=datetime(2012, 10, 23), end_date=datetime(2016, 4, 4)):
     """
     Parse tweets and match them with the poster's party from the MP dictionary.
 

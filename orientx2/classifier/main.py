@@ -3,7 +3,7 @@ import os
 import time
 import pandas as pd
 import logging
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed  # Use threads for better GPU utilization
 from orientx2.classifier import ClassificationPipeline, load_data, predict_sentiment
 import torch
 
@@ -65,6 +65,7 @@ def inference():
         pipeline = ClassificationPipeline(model_name='bert-base-uncased')
         pipeline.load_model(model_path)
         pipeline.model = pipeline.model.to('cuda' if torch.cuda.is_available() else 'cpu')  # Use GPU if available
+        pipeline.device = pipeline.model.device  # Set the device
         logging.info("Model loaded successfully.")
     except Exception as e:
         logging.error("Failed to load model from %s: %s", model_path, e)
@@ -82,11 +83,12 @@ def inference():
     total_rows = parsed_posts_df.shape[0]
     batch_size = 45
     classifications = [None] * total_rows
-    update_interval = 1000  # Number of posts to classify before appending
+    update_interval = 10000  # Number of posts to classify before appending
 
     logging.info("Classifying %d posts", total_rows)
 
-    with ProcessPoolExecutor() as executor:
+    # Use ThreadPoolExecutor for better GPU utilization
+    with ThreadPoolExecutor() as executor:
         batches = [parsed_posts_df.iloc[i:i + batch_size] for i in range(0, total_rows, batch_size)]
         futures = [executor.submit(classify_batch, batch.to_dict('records'), pipeline) for batch in batches]
 

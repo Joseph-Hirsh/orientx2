@@ -1,9 +1,8 @@
 import torch
 
-import torch.nn.functional as F  # Import for softmax
-
 
 def predict_sentiment(texts, model, tokenizer, device, max_length=300):
+    model.to(device)  # Ensure the model is on the correct device
     model.eval()
 
     # Tokenize the batch of texts
