@@ -94,7 +94,8 @@ def inference():
 
     logging.info("Classifying %d posts", total_rows)
 
-    classified_posts = []
+    # Store all classified posts here
+    all_classified_posts = []
 
     # Process batches sequentially
     for i in range(0, total_rows, batch_size):
@@ -106,10 +107,7 @@ def inference():
 
         batch_df = batch.copy()
         batch_df['orientation'] = batch_classifications
-        classified_posts.append(batch_df)
-
-        # Append classified posts periodically
-        append_to_csv(batch_df, classified_tweets_path, header=(i == 0))  # Write header only for the first batch
+        all_classified_posts.append(batch_df)
 
         elapsed_time = time.time() - start_time
         rows_processed = end_index
@@ -122,11 +120,16 @@ def inference():
         logging.error(f"Progress: {percent_done:.2f}% | Speed: {speed:.2f} rows/sec | "
                      f"Estimated Time Remaining: {estimated_time_remaining:.2f} hours")
 
+    # Once classification is done, write everything to CSV at once
+    all_classified_posts_df = pd.concat(all_classified_posts, ignore_index=True)
+    append_to_csv(all_classified_posts_df, classified_tweets_path, header=True)
+
     parsed_posts_df['orientation'] = classifications
 
     # Final save after all classification
     elapsed_time = time.time() - start_time
     logging.error("Classification completed in %.2f seconds.", elapsed_time)
+
 
 
 def train():
