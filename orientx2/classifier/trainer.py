@@ -1,14 +1,20 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from transformers import BertTokenizer, get_linear_schedule_with_warmup
+from transformers import BertTokenizer, get_linear_schedule_with_warmup, get_scheduler
 from sklearn.metrics import accuracy_score, classification_report
 from .data_loader import TextClassificationDataset
 from .model import BERTClassifier
 
+# num_classes=3, max_length=300, batch_size=6, lr=3e-5, epochs=5 - 84%
+# try doing 6 epochs and seeing if it does even better
+# make testing dataset
+# get the balance correct by sampling 300 tweets, classifying, determining what the ratio is
+# then
+
 
 class ClassificationPipeline:
-    def __init__(self, model_name="bert-base-uncased", num_classes=3, max_length=128, batch_size=16, lr=2e-5, epochs=5):
+    def __init__(self, model_name="bert-base-uncased", num_classes=3, max_length=300, batch_size=6, lr=3e-5, epochs=7):
         self.model_name = model_name
         self.num_classes = num_classes
         self.max_length = max_length
@@ -32,28 +38,38 @@ class ClassificationPipeline:
 
     def train(self, train_output_path):
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr)
-        total_steps = len(self.train_loader) * self.epochs
-        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
+        scheduler = get_scheduler(
+            "linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=len(self.train_loader) * self.epochs
+        )
+        loss_fn = nn.CrossEntropyLoss()
 
         for epoch in range(self.epochs):
             self.model.train()
-
-            loss = None
+            total_loss = 0
 
             for batch in self.train_loader:
                 optimizer.zero_grad()
+
                 input_ids = batch['input_ids'].to(self.device)
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['label'].to(self.device)
+
                 outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
-                loss = nn.CrossEntropyLoss()(outputs, labels)
+                loss = loss_fn(outputs, labels)
+                total_loss += loss.item()
+
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)  # Gradient clipping
                 optimizer.step()
                 scheduler.step()
 
+            avg_loss = total_loss / len(self.train_loader)
+            accuracy, report = self.evaluate()  # Ensure this uses the validation set
+            print(f"Epoch {epoch + 1}/{self.epochs}: Avg Loss = {avg_loss:.4f}, Accuracy = {accuracy:.4f}")
+            print(report)
+
         self.save_model(train_output_path)
-        accuracy, report = self.evaluate()
-        print(report)
+        print("Training Complete.")
 
     def evaluate(self):
         self.model.eval()
@@ -64,6 +80,7 @@ class ClassificationPipeline:
                 input_ids = batch['input_ids'].to(self.device)
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['label'].to(self.device)
+
                 outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
                 _, preds = torch.max(outputs, dim=1)
                 predictions.extend(preds.cpu().tolist())
@@ -78,4 +95,4 @@ class ClassificationPipeline:
         torch.save(self.model.state_dict(), path)
 
     def load_model(self, path="assets/model.pth"):
-        self.model.load_state_dict(torch.load(path, weights_only=True))
+        self.model.load_state_dict(torch.load(path))

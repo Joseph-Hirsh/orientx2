@@ -8,12 +8,15 @@ from orientx2.parser import parse_tweets, save_to_csv
 def main():
     current_dir = Path(__file__).resolve().parent
     json_file_path = current_dir.parent.parent / 'assets' / 'MPs.tweets.json'
-    output_csv_path = current_dir.parent.parent / 'assets' / 'parsed_tweets.csv'
+    output_csv_path = current_dir.parent.parent / 'assets' / 'parsed_posts.csv'
+    mp_dict_path = current_dir.parent.parent / 'assets' / 'uk_mps.json'
 
     start_time = time.time()
 
+    df = None
+
     try:
-        df = parse_tweets(json_file_path)
+        df = parse_tweets(json_file_path, mp_dict_path)
         print(df)
 
     except KeyboardInterrupt:

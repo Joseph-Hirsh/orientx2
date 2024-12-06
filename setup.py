@@ -10,7 +10,6 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "orientx2=orientx2.main:main",
             "orientx2-parse=orientx2.parser.main:main",
             "orientx2-classify=orientx2.classifier.main:main",
         ],

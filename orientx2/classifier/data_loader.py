@@ -21,8 +21,9 @@ def load_data(filepath, test_size=0.2, shuffle=True):
             except ValueError:
                 print("ValueError")
 
+    # Stratified split ensures each class is represented proportionally in train and test
     train_texts, val_texts, train_labels, val_labels = train_test_split(
-        texts, labels, test_size=float(test_size), random_state=42, shuffle=shuffle
+        texts, labels, test_size=float(test_size), random_state=42, shuffle=shuffle, stratify=labels
     )
 
     return (train_texts, train_labels), (val_texts, val_labels)

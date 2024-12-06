@@ -1,6 +1,6 @@
 from .data_loader import load_data
 from .trainer import ClassificationPipeline
-from .predictor import classify_x_posts
+from .predictor import predict_sentiment
 
-__all__ = ["ClassificationPipeline", "load_data", "classify_x_posts"]
+__all__ = ["ClassificationPipeline", "load_data", "predict_sentiment"]
 
