@@ -49,6 +49,15 @@ def clear_classified_tweets(classified_tweets_path):
         logging.error("Failed to delete classified tweets file: %s", e)
 
 
+def classify_batch(posts, pipeline):
+    try:
+        content_batch = [post['content'] for post in posts]
+        return predict_sentiment(content_batch, pipeline.model, pipeline.tokenizer, pipeline.device)
+    except Exception as e:
+        logging.error("Error during batch classification: %s", e)
+        return [None] * len(posts)
+
+
 def inference():
     start_time = time.time()
 
@@ -64,8 +73,7 @@ def inference():
         logging.info("Loading model from %s", model_path)
         pipeline = ClassificationPipeline(model_name='bert-base-uncased')
         pipeline.load_model(model_path)
-        pipeline.model = pipeline.model.to('cuda' if torch.cuda.is_available() else 'cpu')  # Use GPU if available
-        pipeline.device = pipeline.model.device  # Set the device
+        pipeline.model = pipeline.model.to('cuda' if torch.cuda.is_available() else 'cpu')
         logging.info("Model loaded successfully.")
     except Exception as e:
         logging.error("Failed to load model from %s: %s", model_path, e)
@@ -81,59 +89,44 @@ def inference():
         return
 
     total_rows = parsed_posts_df.shape[0]
-    batch_size = 45
+    batch_size = 128
     classifications = [None] * total_rows
-    update_interval = 10000  # Number of posts to classify before appending
 
     logging.info("Classifying %d posts", total_rows)
 
-    # Use ThreadPoolExecutor for better GPU utilization
-    with ThreadPoolExecutor() as executor:
-        batches = [parsed_posts_df.iloc[i:i + batch_size] for i in range(0, total_rows, batch_size)]
-        futures = [executor.submit(classify_batch, batch.to_dict('records'), pipeline) for batch in batches]
+    classified_posts = []
 
-        classified_posts = []  # Temporary list to hold classified posts for appending
+    # Process batches sequentially
+    for i in range(0, total_rows, batch_size):
+        batch = parsed_posts_df.iloc[i:i + batch_size]
+        batch_classifications = classify_batch(batch.to_dict('records'), pipeline)
+        start_index = i
+        end_index = start_index + len(batch_classifications)
+        classifications[start_index:end_index] = batch_classifications
 
-        for idx, future in enumerate(as_completed(futures)):
-            batch_classifications = future.result()
-            start_index = idx * batch_size
-            end_index = start_index + len(batch_classifications)
-            classifications[start_index:end_index] = batch_classifications
+        batch_df = batch.copy()
+        batch_df['orientation'] = batch_classifications
+        classified_posts.append(batch_df)
 
-            # Store the classified batch for appending
-            batch_df = parsed_posts_df.iloc[start_index:end_index].copy()
-            batch_df['orientation'] = batch_classifications
-            classified_posts.append(batch_df)
+        # Append classified posts periodically
+        append_to_csv(batch_df, classified_tweets_path, header=(i == 0))  # Write header only for the first batch
 
-            # Append last `update_interval` classified posts periodically
-            if len(classified_posts) * batch_size >= update_interval:
-                recent_batch = pd.concat(classified_posts[-update_interval:], ignore_index=True)
-                append_to_csv(recent_batch, classified_tweets_path, header=(idx == 0))  # Write header only once
-                classified_posts = []  # Reset after appending
+        elapsed_time = time.time() - start_time
+        rows_processed = end_index
+        speed = rows_processed / elapsed_time if elapsed_time > 0 else 0
+        remaining_rows = total_rows - rows_processed
+        estimated_time_remaining = remaining_rows / speed if speed > 0 else 0
+        estimated_time_remaining /= (60 * 60)
 
-            elapsed_time = time.time() - start_time
-            rows_processed = (idx + 1) * batch_size
-            rows_processed = min(rows_processed, total_rows)
-            speed = rows_processed / elapsed_time if elapsed_time > 0 else 0
-            remaining_rows = total_rows - rows_processed
-            estimated_time_remaining = remaining_rows / speed if speed > 0 else 0
-            estimated_time_remaining = estimated_time_remaining / (60 * 60)
+        percent_done = (rows_processed / total_rows) * 100
+        logging.error(f"Progress: {percent_done:.2f}% | Speed: {speed:.2f} rows/sec | "
+                     f"Estimated Time Remaining: {estimated_time_remaining:.2f} hours")
 
-            percent_done = (rows_processed / total_rows) * 100
-            print(f"Progress: {percent_done:.2f}% | Speed: {speed:.2f} rows/sec | "
-                  f"Estimated Time Remaining: {estimated_time_remaining:.2f} hours")
-
-        parsed_posts_df['orientation'] = classifications
+    parsed_posts_df['orientation'] = classifications
 
     # Final save after all classification
     elapsed_time = time.time() - start_time
-    logging.info("Classification completed in %.2f seconds.", elapsed_time)
-
-    # Save any remaining classified tweets at the end
-    remaining_posts = pd.concat(classified_posts, ignore_index=True)
-    append_to_csv(remaining_posts, classified_tweets_path, header=(total_rows == len(classified_posts)))
-
-    logging.info("Finished appending classified tweets to %s", classified_tweets_path)
+    logging.error("Classification completed in %.2f seconds.", elapsed_time)
 
 
 def train():

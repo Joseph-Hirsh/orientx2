@@ -61,14 +61,26 @@ def parse_tweet(line, mp_dict, start_date, end_date):
         party = mp_dict.get(twitter_handle, {}).get("Party", "Unknown")
         referendum_vote = mp_dict.get(twitter_handle, {}).get("Referendum vote", "Unknown")
 
-        content = _strip_newlines(_replace_amp(get_tweet_text(tweet)))
-        content = _remove_links(content)  # Remove links from the content
-        content = _remove_handles(content)  # Remove any lingering Twitter handles
+        content1 = _strip_newlines(_replace_amp(get_tweet_text(tweet)))
+
+        if content1 == "":
+            return
+
+        content2 = _remove_links(content1)  # Remove links from the content
+
+        if content2 == "":
+            return
+
+        content3 = _remove_handles(content2)  # Remove any lingering Twitter handles
+
+        if content3 == "":
+            print("@@@@@", content1)
+            return
 
         return {
             "name": poster_name,
             "party": party,
-            "content": content,
+            "content": content3,
             "date": tweet_date,
             "retweets": tweet.get("retweet_count", 0),
             "favorites": tweet.get("favorite_count", 0),

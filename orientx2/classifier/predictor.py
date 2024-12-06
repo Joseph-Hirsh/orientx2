@@ -6,13 +6,16 @@ def predict_sentiment(texts, model, tokenizer, device, max_length=300):
     model.eval()
 
     # Tokenize the batch of texts
-    encoding = tokenizer(
-        texts,
-        return_tensors='pt',
-        max_length=max_length,
-        padding='max_length',
-        truncation=True
-    )
+    try:
+        encoding = tokenizer(
+            texts,
+            return_tensors='pt',
+            max_length=max_length,
+            padding='max_length',
+            truncation=True
+        )
+    except Exception as e:
+        print(e, texts)
 
     # Move input IDs and attention mask to the correct device
     input_ids = encoding['input_ids'].to(device)
